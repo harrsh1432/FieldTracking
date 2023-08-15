@@ -1,0 +1,60 @@
+public class HistoryTracking {
+    List<sObject> lstRecord=new List<sObject>();
+    Map<id,sObject> mapOldRecords=new Map<id,sObject>();
+    String objectName;
+    Set<String> fields=new Set<String>();
+    String relationshipName;
+    
+    public HistoryTracking(List<sObject> lstRecord,Map<id,sObject> mapOldRecords){
+        this.lstRecord=lstRecord;
+        this.mapOldRecords=mapOldRecords;
+        if(lstRecord.size()>0 && lstRecord[0].Id != NULL){
+        	this.objectName=lstRecord[0].Id.getSObjectType().getDescribe().getName();
+            this.fields=getFieldName(readFieldSet('historySet',this.objectName));
+            this.relationshipName=objectName+'__c';
+        }
+        System.debug('COming here '+lstRecord.size());
+    }
+    
+    public void createFieldHistory(){
+        List<HistoryTracking__c> lstHistoryTracking=new List<HistoryTracking__c>();
+        for(sObject obj : this.lstRecord){
+            for(String field : fields){
+                String newValue=(String)String.valueOf(obj.get(field));
+                String oldValue=(String)String.valueOf(mapOldRecords.get(obj.Id).get(field));
+                if(newValue != oldValue){
+                    lstHistoryTracking.add(createHistoryRecord(newValue,oldValue,obj.Id));
+                }
+            }
+        }
+        System.debug('lstHistoryTracking '+lstHistoryTracking);
+        insert lstHistoryTracking;
+    }
+    
+    public HistoryTracking__c createHistoryRecord(String newValue,String oldValue,Id recordId){
+        HistoryTracking__c history=new HistoryTracking__c();
+        history.oldvalue__c=oldValue;
+        history.newValue__c=newValue;
+        history.put(this.relationshipName,recordId);
+        return history;
+    }
+
+
+    public Set<String> getFieldName(List<Schema.FieldSetMember> fieldSetMembers){
+        Set<String> fields=new Set<String>();
+        for(Schema.FieldSetMember fieldSetMemberObj : fieldSetMembers){
+            fields.add(fieldSetMemberObj.getFieldPath());
+        }
+        return fields;
+    }
+    
+    public List<Schema.FieldSetMember> readFieldSet(String fieldSetName, String ObjectName){
+        Map<String, Schema.SObjectType> GlobalDescribeMap = Schema.getGlobalDescribe(); 
+        Schema.SObjectType SObjectTypeObj = GlobalDescribeMap.get(ObjectName);
+        Schema.DescribeSObjectResult DescribeSObjectResultObj = SObjectTypeObj.getDescribe();
+        Schema.FieldSet fieldSetObj = DescribeSObjectResultObj.FieldSets.getMap().get(fieldSetName);
+        return fieldSetObj.getFields(); 
+	}
+    
+    
+}

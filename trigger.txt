@@ -1,0 +1,5 @@
+trigger OppotunityHistoryTrigger on Opportunity (after update) {
+    HistoryTracking ht=new HistoryTracking(Trigger.New,Trigger.oldMap);
+    ht.createFieldHistory();
+    System.debug('Executed ');
+}
